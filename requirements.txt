@@ -13,6 +13,7 @@ transformers== 4.32.0
 triton== 2.0.0
 typing_extensions== 4.5.0
 typing-inspect== 0.8.0
+uvicorn
 weaviate-client== 3.23.1
 wikipedia== 1.4.0
 xformers== 0.0.21
