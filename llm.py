@@ -106,18 +106,20 @@ vectorstore = Weaviate(client,"Qna", "answer", "question")
 qachain = RetrievalQA.from_chain_type(llm,chain_type="stuff", retriever=vectorstore.as_retriever(), memory= readonlymemory)
 
 def run_qa_chain(query):
-    output = qachain.run(query)
-    print(output)
+    return qachain.run(query)
+    
+#for testing
+# def run_qa_chain(query):
+#     output = qachain.run(query)
+#     print(output)
+# print(llm)
+# print("test1 llm chatbot\n")
+# user_input = input("Please enter your question: \n")
 
-print(llm)
+# while user_input != "0": 
+#     run_qa_chain(user_input)
+#     user_input = input("Please enter your question: \n")
 
-print("test1 llm chatbot\n")
-user_input = input("Please enter your question: \n")
-
-while user_input != "0": 
-    run_qa_chain(user_input)
-    user_input = input("Please enter your question: \n")
-
-sys.exit("Exit Program")     
+# sys.exit("Exit Program")     
 
 
