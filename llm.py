@@ -119,7 +119,7 @@ create_qa_chain()
 println("test1 llm chatbot")
 user_input = input("Please enter your question: \n")
 
-if user_input is "exit":    
+if user_input == "exit":    
     # exits the program 
     sys.exit("Exit Program")     
 else: 
