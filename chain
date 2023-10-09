@@ -7,6 +7,18 @@ from langchain.utilities import GoogleSerperAPIWrapper
 from langchain.retrievers import WikipediaRetriever
 from langchain import LLMMathChain
 import weaviate
+import json
+
+
+WEAVIATE_URL= "https://propertyqna-mym99l34.weaviate.network"
+
+client = weaviate.Client(
+    url = WEAVIATE_URL,
+    auth_client_secret=weaviate.AuthApiKey(api_key="KGy1GFBgfu0hPOHKgreZysSV06hHF0FK4fw2"),  # Replace w/ your Weaviate instance API key
+    additional_headers = {
+        "X-HuggingFace-Api-Key": "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"  # Replace with your inference API key
+    }
+)
 
 #general qna chain
 qna_template = """This is a conversation between a human and a bot:
