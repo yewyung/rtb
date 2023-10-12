@@ -18,6 +18,7 @@ from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
 from langchain.prompts import StringPromptTemplate
 from langchain import LLMChain, PromptTemplate
 from langchain.vectorstores.weaviate import Weaviate
+from langchain.vectorstores import Weaviate
 from langchain.chains import RetrievalQA
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.tools import WikipediaQueryRun
@@ -30,21 +31,20 @@ from torch import cuda, bfloat16
 from langchain import PromptTemplate, LLMChain
 from langchain.llms import HuggingFacePipeline
 
-
-
 name = 'mosaicml/mpt-7b-chat'
-    
+
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 config = transformers.AutoConfig.from_pretrained(name, trust_remote_code=True)
-config.attn_config['attn_impl'] = 'triton'
-    # config.init_device = 'cuda:0' # For fast initialization directly on GPU!
-config.init_device = 'meta' # For fast initialization directly on GPU!
-    
+# config.attn_config['attn_impl'] = 'triton'
+config.init_device = 'cuda:0' # For fast initialization directly on GPU!
+# config.init_device = 'meta' # For fast initialization directly on GPU!
+
 model = transformers.AutoModelForCausalLM.from_pretrained(
     name,
+    config=config,
     trust_remote_code=True,
     torch_dtype=bfloat16,
-    max_seq_len=4096
+    # model_max_length =4096
 )
 model.eval()
 model.to(device)
@@ -80,33 +80,72 @@ generate_text = transformers.pipeline(
 llm = HuggingFacePipeline(pipeline=generate_text)
 
 
+WEAVIATE_URL= "https://propertyqna-mym99l34.weaviate.network"
 
-WEAVIATE_URL= "https://test-w5caihqc.weaviate.network"
 client = weaviate.Client(
     url = WEAVIATE_URL,
-    auth_client_secret=weaviate.AuthApiKey(api_key="WcF6I4lsDaG3gEfezMGSYo1frTQKutKKVydh"),  # Replace w/ your Weaviate instance API key
+    auth_client_secret=weaviate.AuthApiKey(api_key="KGy1GFBgfu0hPOHKgreZysSV06hHF0FK4fw2"),  # Replace w/ your Weaviate instance API key
     additional_headers = {
         "X-HuggingFace-Api-Key": "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"  # Replace with your inference API key
     }
 )
 
 
-template = """This is a conversation between a human and a bot:
-    
-{chat_history}
-    
-Answer all questions related to buying a house in Malaysia, {input}:
-"""
-    
-prompt = PromptTemplate(input_variables=["input", "chat_history"], template=template)
-memory = ConversationBufferMemory(memory_key="chat_history")
-readonlymemory = ReadOnlySharedMemory(memory=memory)
-    
-vectorstore = Weaviate(client,"Qna", "answer", "question")
-qachain = RetrievalQA.from_chain_type(llm,chain_type="stuff", retriever=vectorstore.as_retriever(), memory= readonlymemory)
 
-def run_qa_chain(query):
-    return qachain.run(query)
+#general qna chain
+qna_template = """This is a conversation between a human and a bot:
+
+{chat_history}
+
+Answer all questions related to buying a house in Malaysia:
+"""
+memory = ConversationBufferMemory(memory_key="chat_history")
+# qna_prompt = PromptTemplate(input_variables=["chat_history"], template=qna_template)
+vectorstore = Weaviate(client,"Qna", "answer", "question")
+qna_qachain = RetrievalQA.from_chain_type(llm,chain_type="stuff", retriever=vectorstore.as_retriever(), memory= memory)
+
+
+
+#general wikipedia chain 
+malaysia_retriever = WikipediaRetriever(top_k_results = 2)
+template = """You are a nice chatbot having a conversation with a human.
+
+Chat History:
+{chat_history}
+
+New human question: {question}
+Answer all questions related to Malaysia, for example history, population, economy, public transport etc:
+Response:"""
+
+malaysia_prompt = PromptTemplate.from_template(template)
+malaysia_qachain = RetrievalQA.from_chain_type(llm, retriever=malaysia_retriever, memory=memory)
+
+#general places chain
+search = GoogleSerperAPIWrapper(type="places", gl="my", k = 5)
+result = search.results(query)
+print(result)
+
+prompt = PromptTemplate(
+    input_variables=["result","chat_history"],
+    template="""This is a conversation between a human and a bot:
+
+    {chat_history}
+    Given a list of shops or amenities or public transportations,{result}, summarize and output in sentence form.
+    
+"""
+)
+#function
+chain = LLMChain(llm=llm, prompt=prompt,memory=memory)
+print(chain.run({
+    'result': result
+    }))
+
+
+# def run_generalqa_chain(query):
+#     return qna_qachain(query)
+
+
+
     
 #for testing
 # def run_qa_chain(query):
